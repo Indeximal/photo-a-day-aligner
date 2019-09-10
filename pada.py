@@ -69,6 +69,10 @@ def parse_args():
                               help='Input files glob', type=unicode)
     align_parser.add_argument('--img-thresh',
                               help='Max duplicate frame delta', type=float)
+    align_parser.add_argument('--no-warp',
+                              help='Skip image warping', action="store_true")
+    align_parser.add_argument('--no-rgb-scaling',
+                              help='Skip RGB scaling', action="store_true")
     align_parser.set_defaults(cmd='align')
 
     framedrop_parser = subparsers.add_parser(
@@ -145,7 +149,9 @@ if __name__ == "__main__":
             out_path=cfg['aligned_path'],
             out_extension=cfg['aligned_extension'],
             landmark_finder=landmark_finder,
-            img_thresh=cfg['img_thresh'])
+            img_thresh=cfg['img_thresh'],
+            warp=not(cfg['no_warp']),
+            rgb_scale=not(cfg['no_rgb_scaling']))
     elif cli_args.cmd == "framedrop":
         input_files_glob = os.path.join(
                                        cfg['aligned_path'],
