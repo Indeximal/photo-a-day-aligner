@@ -121,7 +121,7 @@ def get_ims_and_landmarks(images, landmark_finder):
 
 
 def align_images(input_files, out_path, out_extension, landmark_finder,
-                 img_thresh=0.0):
+                 img_thresh=0.0, warp=True, rgb_scale=True):
     """
     Align a set of images of a person's face.
 
@@ -147,6 +147,14 @@ def align_images(input_files, out_path, out_extension, landmark_finder,
 
         Images with an with this distance of the previous image (using the L2
         norm) are considered duplicates and are ignored.
+
+    :param warp:
+
+        If true, warp images.
+
+    :param rgb_scale:
+
+        If true, perform RGB scaling of images.
 
     """
     ref_landmarks = None
@@ -174,19 +182,28 @@ def align_images(input_files, out_path, out_extension, landmark_finder,
     for idx, (n, im, lms) in enumerate(ims_and_landmarks):
         mask = landmarks.get_face_mask(im.shape, lms)
         masked_im = mask[:, :, numpy.newaxis] * im
-        color = ((numpy.sum(masked_im, axis=(0, 1)) /
-                  numpy.sum(mask, axis=(0, 1))))
-        if ref_landmarks is None:
-            ref_landmarks = lms
-        if ref_color is None:
-            ref_color = color
+
         if ref_size is None:
             ref_size = im.shape
 
-        M = orthogonal_procrustes(ref_landmarks, lms)
-        warped = warp_im(im, M, ref_size)
-        warped_corrected = warped * ref_color / color
+        if warp:
+            if ref_landmarks is None:
+                ref_landmarks = lms
+            M = orthogonal_procrustes(ref_landmarks, lms)
+            warped = warp_im(im, M, ref_size)
+        else:
+            warped = im
+
+        if rgb_scale:
+            color = ((numpy.sum(masked_im, axis=(0, 1)) /
+                      numpy.sum(mask, axis=(0, 1))))
+            if ref_color is None:
+                ref_color = color
+            corrected = warped * ref_color / color
+        else:
+            corrected = warped
+
         out_fname = os.path.join(out_path,
                                  "{:08d}.{}".format(idx, out_extension))
-        cv2.imwrite(out_fname, warped_corrected)
+        cv2.imwrite(out_fname, corrected)
         logger.debug("Wrote file %s", out_fname)
