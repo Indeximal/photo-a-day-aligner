@@ -1,17 +1,15 @@
-#!/usr/bin/env python
-
 # Copyright (c) 2016 Matthew Earl
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 #     The above copyright notice and this permission notice shall be included
 #     in all copies or substantial portions of the Software.
-# 
+#
 #     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
 #     OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 #     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
@@ -45,7 +43,8 @@ def read_ims(names, img_thresh):
     for n in names:
         logger.debug("Reading image %s", n)
         im = cv2.imread(n)
-        if prev_im is None or numpy.linalg.norm(prev_im - im) > img_thresh:
+        # TODO config
+        if True or prev_im is None or numpy.linalg.norm(prev_im - im) > img_thresh:
             yield (n, im)
             count += 1
             prev_im = im
@@ -152,6 +151,7 @@ def align_images(input_files, out_path, out_extension, landmark_finder,
     """
     ref_landmarks = None
     ref_color = None
+    ref_size = None
     prev_masked_ims = []
 
     # Clean up the out_path, or create it it if necessary.
@@ -176,15 +176,17 @@ def align_images(input_files, out_path, out_extension, landmark_finder,
         masked_im = mask[:, :, numpy.newaxis] * im
         color = ((numpy.sum(masked_im, axis=(0, 1)) /
                   numpy.sum(mask, axis=(0, 1))))
-        if ref_landmarks is None:  
+        if ref_landmarks is None:
             ref_landmarks = lms
         if ref_color is None:
             ref_color = color
+        if ref_size is None:
+            ref_size = im.shape
+
         M = orthogonal_procrustes(ref_landmarks, lms)
-        warped = warp_im(im, M, im.shape)
+        warped = warp_im(im, M, ref_size)
         warped_corrected = warped * ref_color / color
         out_fname = os.path.join(out_path,
                                  "{:08d}.{}".format(idx, out_extension))
         cv2.imwrite(out_fname, warped_corrected)
         logger.debug("Wrote file %s", out_fname)
-
