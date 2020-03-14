@@ -30,7 +30,7 @@ See below for usage details.
 
 4. Create an image with the face where you want it, a neutral colour and the
    desired output resolution. Place this frame into your input folder and make
-   sure it appears first when lexicographically sorted. E.g `_keyframe`.
+   sure it appears first when lexicographically sorted. E.g `!keyframe`.
 
 5. Run `pada.py align` to align and colour correct your input frames. At this
    point you can inspect the output in `./aligned`. If the results are not
