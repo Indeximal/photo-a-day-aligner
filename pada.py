@@ -74,7 +74,7 @@ def parse_args():
     align_parser.add_argument('--no-rgb-scaling',
                               help='Skip RGB scaling', action="store_true")
     align_parser.add_argument('--no-resizing', action='store_true',
-                              help='Don\'t resize images to fit the first one.'
+                              help='Don\'t resize images to fit the first one. '
                               'Duplicate detection only works when this option '
                               'is enabled.')
     align_parser.add_argument('--gamma', type=float,

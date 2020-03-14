@@ -1,4 +1,4 @@
-# Photo-a-day Aligner 
+# Photo-a-day Aligner
 
 A tools to help with daily self-portrait projects:
 
@@ -23,20 +23,23 @@ See below for usage details.
 1. Create a directory for your project.
 
 2. Copy `examples/pada.conf` into it. Change `predictor_path` to point to your
-   dlib landmarks, [downloadable from here](http://sourceforge.net/projects/
-dclib/files/dlib/v18.10/shape_predictor_68_face_landmarks.dat.bz2).
+   dlib landmarks, [downloadable from here](http://sourceforge.net/projects/dclib/files/dlib/v18.10/shape_predictor_68_face_landmarks.dat.bz2).
 
 3. Create a sub-directory `input`, and place your input frames into it. When
    lexicographically sorted the file names should be in the correct order.
 
-4. Run `pada.py align` to align and colour correct your input frames. At this
+4. Create an image with the face where you want it, a neutral colour and the
+   desired output resolution. Place this frame into your input folder and make
+   sure it appears first when lexicographically sorted. E.g `_keyframe`.
+
+5. Run `pada.py align` to align and colour correct your input frames. At this
    point you can inspect the output in `./aligned`. If the results are not
    satisfactory change settings and repeat this step.
 
-5. Run `pada.py framedrop` to select a sequence of good frames and output them
+6. Run `pada.py framedrop` to select a sequence of good frames and output them
    to `filtered.txt`.
 
-6. Run `make_vid.sh` to convert the above file list into a video, `output.mp4`.
+7. Run `make_vid.sh` to convert the above file list into a video, `output.mp4`.
 
 ## Usage
 
@@ -73,6 +76,8 @@ General `pada.py` options:
 
     $ pada.py align --help
     usage: pada.py align [-h] [--input-glob INPUT_GLOB] [--img-thresh IMG_THRESH]
+                         [--no-warp] [--no-rgb-scaling] [--no-resizing]
+                         [--gamma GAMMA]
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -80,6 +85,12 @@ General `pada.py` options:
                             Input files glob
       --img-thresh IMG_THRESH
                             Max duplicate frame delta
+      --no-warp             Skip image warping
+      --no-rgb-scaling      Skip RGB scaling
+      --no-resizing         Don't resize images to fit the first one. Duplicate
+                            detection only works when this option is enabled.
+      --gamma GAMMA         Gamma value used for gamma corrected rgb scaling.
+
 
 `pada.py framedrop` options:
 
@@ -103,4 +114,3 @@ of config paths run `pada.py print_config_paths`
 `pada.py` requires `numpy`, `dlib`, `scipy`, `cv2`, and `appdirs`.
 
 `make_vid.sh` requires `mencoder` and suitable codecs to be installed.
-
