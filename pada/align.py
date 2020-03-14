@@ -183,7 +183,7 @@ def align_images(input_files, out_path, out_extension, landmark_finder,
     ref_landmarks = None
     ref_color = None
     ref_size = None
-    prev_masked_ims = []
+    # prev_masked_ims = []
 
     # Check argument errors
     if drop_duplicats and resize_images:
@@ -208,9 +208,6 @@ def align_images(input_files, out_path, out_extension, landmark_finder,
                                         drop_duplicats=drop_duplicats),
                                     landmark_finder)
     for idx, (n, im, lms) in enumerate(ims_and_landmarks):
-        mask = landmarks.get_face_mask(im.shape, lms)
-        masked_im = mask[:, :, numpy.newaxis] * im
-
         if resize_images:
             if ref_size is None:
                 ref_size = im.shape
@@ -218,26 +215,31 @@ def align_images(input_files, out_path, out_extension, landmark_finder,
         else:
             out_size = im.shape
 
+        if rgb_scale:
+            gamma_modified = numpy.power(im, scale_gamma)
+
+            mask = landmarks.get_face_mask(im.shape, lms)
+            masked_im = mask[:, :, numpy.newaxis] * gamma_modified
+            avg_face_color = ((numpy.sum(masked_im, axis=(0, 1)) /
+                              numpy.sum(mask, axis=(0, 1))))
+
+            if ref_color is None:
+                ref_color = avg_face_color
+
+            color_corrected = gamma_modified * ref_color / avg_face_color
+            corrected = numpy.power(color_corrected, 1 / scale_gamma)
+        else:
+            corrected = im
+
         if warp:
             if ref_landmarks is None:
                 ref_landmarks = lms
             M = orthogonal_procrustes(ref_landmarks, lms)
-            warped = warp_im(im, M, out_size)
+            warped = warp_im(corrected, M, out_size)
         else:
-            warped = im
-
-        if rgb_scale:
-            color = ((numpy.sum(masked_im, axis=(0, 1)) /
-                      numpy.sum(mask, axis=(0, 1))))
-            if ref_color is None:
-                ref_color = color
-            gamma_modified = numpy.power(warped, scale_gamma)
-            color_corrected = gamma_modified * ref_color / color
-            corrected = numpy.power(color_corrected, 1 / scale_gamma)
-        else:
-            corrected = warped
+            warped = corrected
 
         out_fname = os.path.join(out_path,
                                  "{:08d}.{}".format(idx, out_extension))
-        cv2.imwrite(out_fname, corrected)
+        cv2.imwrite(out_fname, warped)
         logger.debug("Wrote file %s", out_fname)
