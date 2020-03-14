@@ -36,21 +36,26 @@ from . import landmarks
 from .logging import logger
 
 
-def read_ims(names, img_thresh):
+def read_ims(names, img_thresh, drop_duplicats):
     count = 0
     total = 0
     prev_im = None
     for n in names:
         logger.debug("Reading image %s", n)
         im = cv2.imread(n)
-        # TODO config
-        if True or prev_im is None or numpy.linalg.norm(prev_im - im) > img_thresh:
-            yield (n, im)
-            count += 1
-            prev_im = im
-        else:
-            logger.debug("Ignoring %s as it is a duplicate", n)
+
+        if drop_duplicats and prev_im is not None:
+            if prev_im.shape == im.shape:
+                if numpy.linalg.norm(prev_im - im) < img_thresh:
+                    logger.debug("Ignoring %s as it is a duplicate", n)
+                    total += 1
+                    continue
+
+        yield (n, im)
+        count += 1
         total += 1
+        prev_im = im
+
     logger.info("Read %s / %s images", count, total)
 
 
@@ -121,7 +126,8 @@ def get_ims_and_landmarks(images, landmark_finder):
 
 
 def align_images(input_files, out_path, out_extension, landmark_finder,
-                 img_thresh=0.0, warp=True, rgb_scale=True):
+                 img_thresh=0.0, warp=True, rgb_scale=True, scale_gamma=1.8,
+                 drop_duplicats=False, resize_images=True):
     """
     Align a set of images of a person's face.
 
@@ -156,11 +162,32 @@ def align_images(input_files, out_path, out_extension, landmark_finder,
 
         If true, perform RGB scaling of images.
 
+    :param scale_gamma:
+
+        If rgb_scale is True, this determines the gamma correction before (and
+        the reverse after) scaling. This is to improve seemingly overexposed
+        regions after scaling. Set to 1.0 to disable. Default is 1.8.
+
+    :param drop_duplicats:
+
+        Drop following images that are too similar. Not compatible with
+        resize_images.
+
+    :param resize_images:
+
+        Output all images with the resolution of the first one. This allows for
+        images with different resolutions to result in usable output. Not
+        compatible with drop_duplicats.
+
     """
     ref_landmarks = None
     ref_color = None
     ref_size = None
     prev_masked_ims = []
+
+    # Check argument errors
+    if drop_duplicats and resize_images:
+        raise Exception("drop_duplicats and resize_images are not compatible.")
 
     # Clean up the out_path, or create it it if necessary.
     if os.path.exists(out_path):
@@ -177,20 +204,25 @@ def align_images(input_files, out_path, out_extension, landmark_finder,
 
     # Process each file in turn.
     ims_and_landmarks = get_ims_and_landmarks(
-                                  read_ims(input_files, img_thresh=img_thresh),
-                                  landmark_finder)
+                                    read_ims(input_files, img_thresh=img_thresh,
+                                        drop_duplicats=drop_duplicats),
+                                    landmark_finder)
     for idx, (n, im, lms) in enumerate(ims_and_landmarks):
         mask = landmarks.get_face_mask(im.shape, lms)
         masked_im = mask[:, :, numpy.newaxis] * im
 
-        if ref_size is None:
-            ref_size = im.shape
+        if resize_images:
+            if ref_size is None:
+                ref_size = im.shape
+            out_size = ref_size
+        else:
+            out_size = im.shape
 
         if warp:
             if ref_landmarks is None:
                 ref_landmarks = lms
             M = orthogonal_procrustes(ref_landmarks, lms)
-            warped = warp_im(im, M, ref_size)
+            warped = warp_im(im, M, out_size)
         else:
             warped = im
 
@@ -199,7 +231,9 @@ def align_images(input_files, out_path, out_extension, landmark_finder,
                       numpy.sum(mask, axis=(0, 1))))
             if ref_color is None:
                 ref_color = color
-            corrected = warped * ref_color / color
+            gamma_modified = numpy.power(warped, scale_gamma)
+            color_corrected = gamma_modified * ref_color / color
+            corrected = numpy.power(color_corrected, 1 / scale_gamma)
         else:
             corrected = warped
 

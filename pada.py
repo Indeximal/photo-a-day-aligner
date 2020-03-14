@@ -73,6 +73,14 @@ def parse_args():
                               help='Skip image warping', action="store_true")
     align_parser.add_argument('--no-rgb-scaling',
                               help='Skip RGB scaling', action="store_true")
+    align_parser.add_argument('--no-resizing', action='store_true',
+                              help='Don\'t resize images to fit the first one.'
+                              'Duplicate detection only works when this option '
+                              'is enabled.')
+    align_parser.add_argument('--gamma', type=float,
+                              help='Gamma value used for gamma corrected rgb '
+                              'scaling.', default=1.8)
+
     align_parser.set_defaults(cmd='align')
 
     framedrop_parser = subparsers.add_parser(
@@ -151,7 +159,10 @@ if __name__ == "__main__":
             landmark_finder=landmark_finder,
             img_thresh=cfg['img_thresh'],
             warp=not(cfg['no_warp']),
-            rgb_scale=not(cfg['no_rgb_scaling']))
+            rgb_scale=not(cfg['no_rgb_scaling']),
+            scale_gamma=cfg['gamma'],
+            drop_duplicats=cfg['no_resizing'],
+            resize_images=not cfg['no_resizing'])
     elif cli_args.cmd == "framedrop":
         input_files_glob = os.path.join(
                                        cfg['aligned_path'],
